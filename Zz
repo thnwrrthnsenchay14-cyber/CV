@@ -1,0 +1,189 @@
+-- Services
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+local Camera = workspace.CurrentCamera
+local UserInputService = game:GetService("UserInputService")
+local CoreGui = game:GetService("CoreGui")
+
+-- Variables
+local AimEnabled = false
+local AimPart = "Head"
+local AimKey = Enum.UserInputType.MouseButton2 -- คลิกขวาเพื่อล็อก
+local Sensitivity = 0.2
+
+-- Create Main ScreenGui
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "DeltaAimLockHub"
+ScreenGui.Parent = CoreGui or LocalPlayer:WaitForChild("PlayerGui")
+ScreenGui.ResetOnSpawn = false
+
+-- 1. ปุ่มเปิดโปร (Open Button - แสดงเมื่อซ่อนเมนู)
+local OpenBtn = Instance.new("TextButton")
+OpenBtn.Name = "OpenButton"
+OpenBtn.Parent = ScreenGui
+OpenBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+OpenBtn.BorderColor3 = Color3.fromRGB(0, 255, 150)
+OpenBtn.BorderSizePixel = 2
+OpenBtn.Position = UDim2.new(0, 15, 0.5, -20)
+OpenBtn.Size = UDim2.new(0, 80, 0, 40)
+OpenBtn.Font = Enum.Font.SourceSansBold
+OpenBtn.Text = "เปิดโปร"
+OpenBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+OpenBtn.TextSize = 16
+OpenBtn.Visible = false -- ซ่อนไว้ก่อน
+OpenBtn.Active = true
+OpenBtn.Draggable = true -- ลากย้ายปุ่มเปิดได้
+
+-- 2. หน้าต่างหลัก (Main Window Frame)
+local MainFrame = Instance.new("Frame")
+MainFrame.Name = "MainFrame"
+MainFrame.Parent = ScreenGui
+MainFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 30)
+MainFrame.BorderSizePixel = 0
+MainFrame.Position = UDim2.new(0.35, 0, 0.3, 0)
+MainFrame.Size = UDim2.new(0, 240, 0, 180)
+MainFrame.Active = true
+MainFrame.Draggable = true -- ลากย้ายหน้าต่างได้
+
+-- Title Bar (แถบหัวข้อ)
+local Title = Instance.new("TextLabel")
+Title.Parent = MainFrame
+Title.BackgroundColor3 = Color3.fromRGB(15, 15, 20)
+Title.BorderSizePixel = 0
+Title.Size = UDim2.new(1, 0, 0, 30)
+Title.Font = Enum.Font.SourceSansBold
+Title.Text = "  AIMLOCK HUB"
+Title.TextColor3 = Color3.fromRGB(255, 255, 255)
+Title.TextSize = 16
+Title.TextXAlignment = Enum.TextXAlignment.Left
+
+-- ปุ่มกดซ่อน/เข้าโปร (-)
+local MinimizeBtn = Instance.new("TextButton")
+MinimizeBtn.Parent = MainFrame
+MinimizeBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 65)
+MinimizeBtn.BorderSizePixel = 0
+MinimizeBtn.Position = UDim2.new(1, -60, 0, 3)
+MinimizeBtn.Size = UDim2.new(0, 24, 0, 24)
+MinimizeBtn.Font = Enum.Font.SourceSansBold
+MinimizeBtn.Text = "-"
+MinimizeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+MinimizeBtn.TextSize = 18
+
+-- ปุ่มกดปิด/ออกโปร (X)
+local CloseBtn = Instance.new("TextButton")
+CloseBtn.Parent = MainFrame
+CloseBtn.BackgroundColor3 = Color3.fromRGB(180, 40, 40)
+CloseBtn.BorderSizePixel = 0
+CloseBtn.Position = UDim2.new(1, -30, 0, 3)
+CloseBtn.Size = UDim2.new(0, 24, 0, 24)
+CloseBtn.Font = Enum.Font.SourceSansBold
+CloseBtn.Text = "X"
+CloseBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+CloseBtn.TextSize = 14
+
+-- ปุ่มสวิตช์ เปิด/ปิด สคริปต์ล็อกหัว
+local ToggleBtn = Instance.new("TextButton")
+ToggleBtn.Parent = MainFrame
+ToggleBtn.BackgroundColor3 = Color3.fromRGB(180, 50, 50)
+ToggleBtn.Position = UDim2.new(0.08, 0, 0.28, 0)
+ToggleBtn.Size = UDim2.new(0.84, 0, 0, 35)
+ToggleBtn.Font = Enum.Font.SourceSansBold
+ToggleBtn.Text = "สคริปต์: ปิดอยู่ [OFF]"
+ToggleBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+ToggleBtn.TextSize = 15
+
+-- ปุ่มสลับตำแหน่งล็อก (หัว/ตัว)
+local PartBtn = Instance.new("TextButton")
+PartBtn.Parent = MainFrame
+PartBtn.BackgroundColor3 = Color3.fromRGB(45, 45, 50)
+PartBtn.Position = UDim2.new(0.08, 0, 0.55, 0)
+PartBtn.Size = UDim2.new(0.84, 0, 0, 35)
+PartBtn.Font = Enum.Font.SourceSans
+PartBtn.Text = "จุดล็อก: หัว (Head)"
+PartBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+PartBtn.TextSize = 14
+
+--------------------------------------------------
+-- Event Handlers & Logic
+--------------------------------------------------
+
+-- กดซ่อนเมนู (กด - บนแถบ) -> ย่อไปเป็นปุ่มเปิดโปร
+MinimizeBtn.MouseButton1Click:Connect(function()
+    MainFrame.Visible = false
+    OpenBtn.Visible = true
+end)
+
+-- กดปุ่ม "เปิดโปร" -> แสดงหน้าต่างหลัก
+OpenBtn.MouseButton1Click:Connect(function()
+    MainFrame.Visible = true
+    OpenBtn.Visible = false
+end)
+
+-- กดปิด/ออกโปร (กด X บนแถบ) -> ทำลาย GUI และปิดการทำงาน
+CloseBtn.MouseButton1Click:Connect(function()
+    AimEnabled = false
+    ScreenGui:Destroy()
+end)
+
+-- กดเปิด/ปิด ระบบ AimLock
+ToggleBtn.MouseButton1Click:Connect(function()
+    AimEnabled = not AimEnabled
+    if AimEnabled then
+        ToggleBtn.Text = "สคริปต์: เปิดอยู่ [ON]"
+        ToggleBtn.BackgroundColor3 = Color3.fromRGB(50, 180, 50)
+    else
+        ToggleBtn.Text = "สคริปต์: ปิดอยู่ [OFF]"
+        ToggleBtn.BackgroundColor3 = Color3.fromRGB(180, 50, 50)
+    end
+end)
+
+-- กดสลับจุดล็อก Head / Body
+PartBtn.MouseButton1Click:Connect(function()
+    if AimPart == "Head" then
+        AimPart = "HumanoidRootPart"
+        PartBtn.Text = "จุดล็อก: ลำตัว (Body)"
+    else
+        AimPart = "Head"
+        PartBtn.Text = "จุดล็อก: หัว (Head)"
+    end
+end)
+
+-- ค้นหาผู้เล่นที่ใกล้เป้าเล็งที่สุด
+local function GetClosestPlayer()
+    local ClosestPlayer = nil
+    local ShortestDistance = math.huge
+    local MousePos = UserInputService:GetMouseLocation()
+
+    for _, v in pairs(Players:GetPlayers()) do
+        if v ~= LocalPlayer and v.Character and v.Character:FindFirstChild(AimPart) and v.Character:FindFirstChildOfClass("Humanoid") then
+            if v.Character:FindFirstChildOfClass("Humanoid").Health > 0 then
+                local TargetPart = v.Character[AimPart]
+                local ScreenPos, OnScreen = Camera:WorldToViewportPoint(TargetPart.Position)
+
+                if OnScreen then
+                    local Distance = (Vector2.new(ScreenPos.X, ScreenPos.Y) - MousePos).Magnitude
+                    if Distance < ShortestDistance then
+                        ShortestDistance = Distance
+                        ClosestPlayer = TargetPart
+                    end
+                end
+            end
+        end
+    end
+    return ClosestPlayer
+end
+
+-- ล็อกเป้าอัตโนมัติเมื่อกดคลิกขวาค้างไว้
+UserInputService.InputBegan:Connect(function(input)
+    if input.UserInputType == AimKey and AimEnabled then
+        local Target = GetClosestPlayer()
+        while UserInputService:IsMouseButtonPressed(AimKey) and AimEnabled do
+            task.wait()
+            if Target and Target.Parent and Target.Parent:FindFirstChildOfClass("Humanoid") and Target.Parent:FindFirstChildOfClass("Humanoid").Health > 0 then
+                Camera.CFrame = Camera.CFrame:Lerp(CFrame.new(Camera.CFrame.Position, Target.Position), Sensitivity)
+            else
+                Target = GetClosestPlayer()
+            end
+        end
+    end
+end)
